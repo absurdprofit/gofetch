@@ -1,0 +1,1 @@
+export type RequestOrResponse<T extends Request | Response> = T extends Request ? Request : Response;

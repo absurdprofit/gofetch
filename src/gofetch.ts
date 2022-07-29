@@ -1,7 +1,8 @@
+import { RequestOrResponse } from "./common/type";
 import { isAbsoluteURL, isResponse } from "./common/utils";
 
-export class Gofetch<T> {
-    private _fetch: Response | Request;
+export class Gofetch<T, F extends Request | Response = Request> {
+    private readonly _fetch: Response | Request;
 
     constructor(
         baseURL: string = window.location.origin,
@@ -26,8 +27,8 @@ export class Gofetch<T> {
         return this._fetch.url;
     }
 
-    get raw() {
-        return this._fetch;
+    get raw(): RequestOrResponse<F> {
+        return this._fetch as any;
     }
 
     public arrayBuffer(): Promise<ArrayBuffer> {
@@ -54,18 +55,18 @@ export class Gofetch<T> {
         return this._fetch.text();
     }
 
-    public async get<R = any>(input: RequestInfo | URL): Promise<Gofetch<R>> {
+    public async get<R = any>(input: RequestInfo | URL): Promise<Gofetch<R, Response>> {
         const response = await fetch(this.resolveURL(input));
 
-        return new Gofetch<R>(response.url, response);
+        return new Gofetch<R, Response>(this._fetch.url, response);
     }
 
-    public async post<R = any>(input: RequestInfo | URL, body?: BodyInit | ReadableStream<BodyInit>) {
+    public async post<D = any, R = any>(input: RequestInfo | URL, body?: BodyInit | ReadableStream<D>) {
         const response = await fetch(this.resolveURL(input), {
             body
         });
 
-        return new Gofetch<R>(response.url, response);
+        return new Gofetch<R, Response>(this._fetch.url, response);
     }
 
     private resolveURL(path: RequestInfo | URL) {
@@ -88,8 +89,6 @@ const gofetch = new Gofetch();
 export default gofetch;
 
 // example
-gofetch.get<{name: 'Nathan'}>('/videos/345453').then(response => {
-    if (isResponse(response.raw)) {
-        response.raw.ok;
-    }
+gofetch.get<{name: 'Nathan'}>('/videos/345453').then(async response => {
+    console.log(response.raw);
 });
