@@ -50,7 +50,7 @@ export class Gofetch<T> {
         return this._fetch.json();
     }
 
-    public test() {
+    public text() {
         return this._fetch.text();
     }
 
