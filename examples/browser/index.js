@@ -19,7 +19,7 @@ class ConsoleStream extends TransformStream {
     }
 }
 
-class Writable extends WritableStream {
+class BufferStream extends WritableStream {
     constructor(props) {
         const queuingStrategy = new CountQueuingStrategy({ highWaterMark: 1 });
         super({
@@ -50,26 +50,27 @@ gofetch.use({
     }
 });
 
-const fetch = document.getElementById('fetch');
-const code = document.querySelector('code');
-const reset = document.getElementById('reset');
+const fetchButton = document.getElementById('fetch');
+const resetButton = document.getElementById('reset');
+const table = document.getElementById('table');
 
-if (reset) {
-    reset.onclick = () => {
-        if (!code) return;
-        code.textContent = '';
+if (resetButton) {
+    resetButton.onclick = () => {
+        if (table) {
+            table.innerHTML = '';
+        }
     }
 }
-if (fetch) {
-    fetch.onclick = () => {
+if (fetchButton) {
+    fetchButton.onclick = () => {
         gofetch.get('https://streams.spec.whatwg.org/demos/data/commits.include')
         .then(async (response) => {
             const body = response.body;
-            if (!code || !body) return;
+            if (!table) return;
             
-            const writable = new Writable({
+            const writable = new BufferStream({
                 onChunk: (chunk) => {
-                    code.textContent += chunk;
+                    table.innerHTML += chunk;
                 }
             });
             body.pipeTo(writable);

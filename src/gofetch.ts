@@ -177,9 +177,5 @@ export class Gofetch<T = any, F extends Request | Response = Request> {
 }
 
 const gofetch = new Gofetch(); // base instance
-gofetch.use({
-    onResponse(config) {
-        return config
-    }
-})
+
 export default gofetch;
