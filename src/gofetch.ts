@@ -146,6 +146,10 @@ export class Gofetch<T = any, F extends Request | Response = Request> {
         return this._middlewares.add(middleware);
     }
 
+    public remove(_id: number) {
+        return this._middlewares.remove(_id);
+    }
+
     public async dispatchResponseMiddlewares<D>(config: ResponseConfigReturn<D>) {
         for (const middleware of this._middlewares) {
             if (middleware.onResponse) {

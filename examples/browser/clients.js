@@ -1,5 +1,5 @@
-import gofetch from '/build/index.mjs';
-import {IdleBufferStream} from '/build/common/streams.mjs';
+import gofetch from '../../build/index.mjs';
+import {IdleTransformStream} from '../../build/common/streams.mjs';
 import { deriveKey, DecryptionStream } from './utils.js';
 
 const videoClient = gofetch.createInstance(new URL('./examples/browser/videos', window.location.origin));
@@ -9,7 +9,7 @@ videoClient.use({
         const {readable, writable} = new TransformStream();
         if (body) {
             body
-            .pipeThrough(new IdleBufferStream())
+            .pipeThrough(new IdleTransformStream())
             .pipeThrough(new DecompressionStream('gzip'))   
             .pipeTo(writable);
         }
@@ -31,7 +31,7 @@ encryptedClient.use({
         if (body) {
             const key = await deriveKey('absurdprofit1234');            
             body
-            .pipeThrough(new IdleBufferStream())
+            .pipeThrough(new IdleTransformStream())
             .pipeThrough(new DecryptionStream(key))   
             .pipeThrough(new DecompressionStream('gzip'))
             .pipeTo(writable);

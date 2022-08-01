@@ -1,39 +1,5 @@
-import gofetch from '/build/gofetch.js';
-
-class ConsoleStream extends TransformStream {
-    constructor() {
-        super({
-            start() {},
-            async transform(chunk, controller) {
-                chunk = await chunk;
-
-                if (chunk === null) controller.terminate();
-                else {
-                    controller.enqueue(chunk);
-                    console.log(`${chunk}`);
-                }
-                
-            },
-            flush() {}
-        })
-    }
-}
-
-class BufferStream extends WritableStream {
-    constructor(props) {
-        const queuingStrategy = new CountQueuingStrategy({ highWaterMark: 1 });
-        super({
-            write(chunk) {
-                return new Promise((resolve, reject) => {
-                    if (props.onChunk) props.onChunk(chunk);
-                    resolve();
-                })
-            },
-            close() {},
-            abort(error) {}
-        }, queuingStrategy);
-    }
-}
+import gofetch from '../../build/index.mjs';
+import {BufferStream} from '../../build/common/streams.mjs';
 
 gofetch.use({
     onResponse: async (config) => {
@@ -62,19 +28,17 @@ if (resetButton) {
     }
 }
 if (fetchButton) {
-    fetchButton.onclick = () => {
-        gofetch.get('https://streams.spec.whatwg.org/demos/data/commits.include')
-        .then(async (response) => {
-            const body = response.body;
-            if (!table) return;
-            
-            const writable = new BufferStream({
-                onChunk: (chunk) => {
-                    table.innerHTML += chunk;
-                }
-            });
-            body.pipeTo(writable);
+    fetchButton.onclick = async () => {
+        const response = await gofetch.get('https://streams.spec.whatwg.org/demos/data/commits.include');
+        const body = response.body;
+        if (!table) return;
+        
+        const writable = new BufferStream({
+            onChunk: (chunk) => {
+                table.innerHTML += chunk;
+            }
         });
+        body.pipeTo(writable);
     }
 }
 
