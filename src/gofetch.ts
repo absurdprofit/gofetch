@@ -136,7 +136,7 @@ export class Gofetch<T = any, F extends Request | Response = Request> {
         return url;
     }
 
-    public createInstance(baseURL: string, options?: GofetchRequestInit) {
+    public createInstance(baseURL: string, options: GofetchRequestInit = {}) {
         // merge defaults
         options = deepMerge(this._defaultOptions, options);
         return new Gofetch(baseURL, new Request(baseURL, options));

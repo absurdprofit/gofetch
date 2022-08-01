@@ -2,7 +2,10 @@ const path = require('path');
 
 module.exports = {
   mode: 'development',
-  entry: './src/gofetch.ts',
+  entry: {
+    index: path.resolve(__dirname, 'src', 'gofetch.ts'),
+    ['common/streams']: path.resolve(__dirname, 'src', 'common', 'streams.ts')
+  },
   module: {
     rules: [
       {
@@ -23,7 +26,7 @@ module.exports = {
     library: {
       type: 'module'
     },
-    filename: 'gofetch.js',
+    // filename: 'gofetch.js',
     path: path.resolve(__dirname, 'build'),
     clean: true
   },
