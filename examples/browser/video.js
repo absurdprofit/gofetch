@@ -1,5 +1,5 @@
 import {videoClient}from './clients.js';
-import {BufferStream} from '../../build/common/streams.mjs';
+import {BufferStream, ProgressStream} from '../../build/common/streams.mjs';
 
 const videoURL = 'video.gzip';
 const onplay = async () => {
@@ -40,7 +40,12 @@ const onplay = async () => {
         });
         
         const body = response.body;
-        body.pipeTo(writable);
+        body
+        .pipeThrough(new ProgressStream({
+            onProgress: onProgress,
+            contentLength: response.headers['content-length']
+        }))   
+        .pipeTo(writable);
 
         if (saveToDisk) {
             const writableStream = await newHandle.createWritable();
@@ -54,6 +59,13 @@ const onplay = async () => {
 const video = document.querySelector('video');
 const play = document.querySelector('button');
 const checkbox = document.querySelector('#checkbox');
+const progressBar = document.querySelector('progress');
+
+const onProgress = (progress) => {
+    if (progressBar) {
+        progressBar.value = progress * 100;
+    }
+}
 
 if (play) {
     play.onclick = onplay;

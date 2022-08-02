@@ -43,7 +43,30 @@ export class IdleTransformStream<I, O = I> extends TransformStream<I, O> {
     }
 }
 
-export class ProgressStream extends TransformStream {
+export interface ProgressStreamProps {
+    onProgress(progress: number): void;
+    contentLength: number | string;
+}
+
+export class ProgressStream<I extends {'length': number | {'toString': ()=>string}}> extends TransformStream<I, I> {
+    constructor(props: ProgressStreamProps) {
+        const contentLength = parseFloat(props.contentLength.toString());
+        let transferred = 0;
+        super({
+            start() {},
+            transform(chunk, controller) {
+                props.onProgress(transferred / contentLength);
+                transferred += parseFloat(chunk.length.toString());
+
+                controller.enqueue(chunk);
+            },
+            flush() {
+                let progress = transferred / contentLength;
+                progress = progress > 1 ? 1 : progress;
+                props.onProgress(progress);
+            }
+        })
+    }
 
 }
 

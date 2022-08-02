@@ -19,7 +19,7 @@ export function deepMerge<T, U>(obj1: T, obj2: U): DeepMerge<T, U> {
         for (const key in obj2) {
             if (isObject(obj2[key])) {
                 Object.assign(obj1, {[key]: {}});
-                deepMerge(obj1, { [key]: obj2[key] });
+                deepMerge(obj1[key as unknown as keyof T], obj2[key]);
             } else {
                 Object.assign(obj1, { [key]: obj2[key] });
             }
@@ -29,4 +29,22 @@ export function deepMerge<T, U>(obj1: T, obj2: U): DeepMerge<T, U> {
     } else {
         throw new TypeError('Parameter is not of type Object');
     }
+}
+
+export function isIterable<T>(i: any): i is Iterable<T> {
+    if (!i) return false;
+    return (Symbol.iterator in i) || Array.isArray(i);
+}
+
+export type Key = string | number | symbol;
+export function iterableToObject<T extends [Key, any]>(iterable: Iterable<T> | Array<T>) {
+    if (!isIterable(iterable)) throw new TypeError("Object is not iterable");
+
+    const object: {[key:Key]:any} = {};
+    for (const item of iterable) {
+        const [key, value] = item;
+        object[key] = value;
+    }
+
+    return object;
 }

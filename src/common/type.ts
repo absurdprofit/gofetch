@@ -1,5 +1,12 @@
 export type RequestOrResponse<T extends Request | Response> = T extends Request ? Request : Response;
 
+interface RangeObject {
+  start: number;
+  end?: number;
+}
+type RangeArray = [number, number?];
+export type Range = RangeObject | RangeArray | number;
+// TODO add developer interface for specifying range requests
 export type GofetchRequestInit = Partial<Pick<RequestInit, 'cache' | 'credentials' | 'headers' | 'integrity' | 'redirect' | 'referrer' | 'referrerPolicy'>>;
 export type GofetchResponseInit = Partial<ResponseInit>;
 

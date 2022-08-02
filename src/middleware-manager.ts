@@ -3,6 +3,10 @@ import { Middleware } from "./common/type";
 export default class MiddlewareManager {
     private readonly middlewareMap = new Map<number, Middleware<any> | null>();
 
+    constructor(middlewares?: MiddlewareManager) {
+        if (middlewares) this.middlewareMap = new Map(middlewares.entries);
+    }
+
     add(middleware: Middleware<any>) {
         const index = this.middlewareMap.size;
         this.middlewareMap.set(index, middleware);
@@ -12,6 +16,10 @@ export default class MiddlewareManager {
 
     remove(index: number) {
         return this.middlewareMap.delete(index);
+    }
+
+    get entries() {
+        return this.middlewareMap.entries();
     }
 
     [Symbol.iterator]() {

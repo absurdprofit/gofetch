@@ -1,5 +1,5 @@
-import { GofetchRequestInit, Middleware, RequestConfig, RequestOrResponse, ResponseConfig, ResponseConfigReturn } from "./common/type";
-import { deepMerge, isAbsoluteURL, isResponse } from "./common/utils";
+import { GofetchRequestInit, Middleware, RequestConfig, RequestOrResponse, ResponseConfigReturn } from "./common/type";
+import { deepMerge, isAbsoluteURL, isIterable, iterableToObject } from "./common/utils";
 import MiddlewareManager from "./middleware-manager";
 
 export class Gofetch<T = any, F extends Request | Response = Request> {
@@ -31,7 +31,7 @@ export class Gofetch<T = any, F extends Request | Response = Request> {
     }
 
     get headers() {
-        return this.fetch.headers;
+        return iterableToObject(this.fetch.headers);
     }
     
     get url() {
@@ -67,6 +67,7 @@ export class Gofetch<T = any, F extends Request | Response = Request> {
     }
 
     public async get<R = any>(input: RequestInfo | URL, options: GofetchRequestInit = {}): Promise<Gofetch<R, Response>> {
+        if (isIterable(options.headers)) options.headers = iterableToObject(options.headers as Headers | [string, string][]);
         let config = await this.dispatchRequestMiddlewares({
             options: deepMerge(this._defaultOptions, options)
         });
@@ -79,7 +80,7 @@ export class Gofetch<T = any, F extends Request | Response = Request> {
         const responseConfig = await this.dispatchResponseMiddlewares({
             body: response.body,
             options: {
-                headers: response.headers,
+                headers: iterableToObject(response.headers),
                 status: response.status,
                 statusText: response.statusText
             }
@@ -94,6 +95,7 @@ export class Gofetch<T = any, F extends Request | Response = Request> {
     }
 
     public async post<D = any, R = any>(input: RequestInfo | URL, body?: BodyInit | ReadableStream<D>, options: GofetchRequestInit = {}) {
+        if (isIterable(options.headers)) options.headers = iterableToObject(options.headers as Headers | [string, string][]);
         let requestConfig = await this.dispatchRequestMiddlewares({
             body,
             options: deepMerge(this._defaultOptions, options)
@@ -108,7 +110,7 @@ export class Gofetch<T = any, F extends Request | Response = Request> {
         const responseConfig = await this.dispatchResponseMiddlewares({
             body: response.body,
             options: {
-                headers: response.headers,
+                headers: iterableToObject(response.headers),
                 status: response.status,
                 statusText: response.statusText
             }
@@ -139,7 +141,7 @@ export class Gofetch<T = any, F extends Request | Response = Request> {
     public createInstance(baseURL: string, options: GofetchRequestInit = {}) {
         // merge defaults
         options = deepMerge(this._defaultOptions, options);
-        return new Gofetch(baseURL, new Request(baseURL, options));
+        return new Gofetch(baseURL, options, new Request(baseURL), new MiddlewareManager(this._middlewares));
     }
 
     public use<D = any>(middleware: Middleware<D>) {

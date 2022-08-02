@@ -1,12 +1,15 @@
 import gofetch from '../../build/index.mjs';
-import {BufferStream} from '../../build/common/streams.mjs';
+import {BufferStream, IdleTransformStream} from '../../build/common/streams.mjs';
 
 gofetch.use({
     onResponse: async (config) => {
         let body = config.body;
         const {readable, writable} = new TransformStream();
         if (body) {
-            body.pipeThrough(new TextDecoderStream()).pipeTo(writable);
+            body
+            .pipeThrough(new IdleTransformStream())
+            .pipeThrough(new TextDecoderStream())
+            .pipeTo(writable);
         }
 
         return {
@@ -36,6 +39,7 @@ if (fetchButton) {
         const writable = new BufferStream({
             onChunk: (chunk) => {
                 table.innerHTML += chunk;
+                console.log("On Chunk");
             }
         });
         body.pipeTo(writable);
