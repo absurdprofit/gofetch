@@ -94,7 +94,7 @@ export class Gofetch<T = any, F extends Request | Response = Request> {
                 }
             }, controller);
 
-            requestConfig.options = deepMerge(requestConfig.options, responseConfig.options);
+            requestConfig.options = 'options' in responseConfig ? responseConfig.options ?? undefined : requestConfig.options;
             // if the body field is specified in the retry config then we consider this the new body
             requestConfig.body = 'body' in responseConfig ? responseConfig.body ?? undefined : requestConfig.body;
         }
