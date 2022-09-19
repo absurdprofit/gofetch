@@ -1,4 +1,4 @@
-import { Middleware } from "./common/type";
+import { Middleware } from "./common/types";
 
 export default class MiddlewareManager {
     private readonly middlewareMap = new Map<number, Middleware<any> | null>();

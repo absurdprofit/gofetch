@@ -1,4 +1,4 @@
-import { DeepMerge, ResponseConfig } from "./type";
+import { DeepMerge, ResponseConfig } from "./types";
 
 export function isAbsoluteURL(url: RequestInfo | URL) {
     const r = new RegExp('^(?:[a-z+]+:)?//', 'i');

@@ -1,6 +1,6 @@
-import { GoFetchMethod, GofetchRequestInit, Middleware, RequestConfig, RequestOrResponse, ResponseConfigReturn } from "./common/type";
+import { GoFetchMethod, GofetchRequestInit, Middleware, RequestConfig, RequestOrResponse, ResponseConfigReturn } from "./common/types";
 import { deepMerge, isAbsoluteURL, isIterable, iterableToObject } from "./common/utils";
-import MiddlewareManager from "./middleware-manager";
+import MiddlewareManager from "./MiddlewareManager";
 import { RetryController } from "./RetryController";
 
 export class Gofetch<T = any, F extends Request | Response = Request> {
