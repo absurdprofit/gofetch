@@ -1,3 +1,5 @@
+import { RetryController } from "../RetryController";
+
 export type RequestOrResponse<T extends Request | Response> = T extends Request ? Request : Response;
 
 interface RangeObject {
@@ -56,7 +58,9 @@ export interface ResponseConfig<D> {
 export type ResponseConfigReturn<D> = Pick<ResponseConfig<D>, 'body' | 'options'>;
 
 export interface Middleware<D> {
-    onRequest?(config: RequestConfig<D>): PromiseLike<RequestConfig<D>> | RequestConfig<D>;
-    onResponse?(config: ResponseConfig<D>): PromiseLike<ResponseConfigReturn<D>> | ResponseConfigReturn<D>;
-    onError?(error: Error): Promise<void>;
+  onRequest?(config: RequestConfig<D>): PromiseLike<RequestConfig<D>> | RequestConfig<D>;
+  onResponse?(config: ResponseConfig<D>): PromiseLike<ResponseConfigReturn<D>> | ResponseConfigReturn<D>;
+  onError?(config: ResponseConfig<D>, controller: RetryController): Promise<PromiseLike<ResponseConfigReturn<D>> | ResponseConfigReturn<D> | void>;
 }
+
+export type GoFetchMethod = 'GET' | 'POST';

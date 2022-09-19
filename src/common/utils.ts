@@ -1,4 +1,4 @@
-import { DeepMerge } from "./type";
+import { DeepMerge, ResponseConfig } from "./type";
 
 export function isAbsoluteURL(url: RequestInfo | URL) {
     const r = new RegExp('^(?:[a-z+]+:)?//', 'i');
@@ -47,4 +47,10 @@ export function iterableToObject<T extends [Key, any]>(iterable: Iterable<T> | A
     }
 
     return object;
+}
+
+class GoFetchError<D> extends Error {
+    constructor(config: ResponseConfig<D>) {
+        super();
+    }
 }

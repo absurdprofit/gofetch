@@ -1,6 +1,7 @@
-import { GofetchRequestInit, Middleware, RequestConfig, RequestOrResponse, ResponseConfigReturn } from "./common/type";
+import { GoFetchMethod, GofetchRequestInit, Middleware, RequestConfig, RequestOrResponse, ResponseConfigReturn } from "./common/type";
 import { deepMerge, isAbsoluteURL, isIterable, iterableToObject } from "./common/utils";
 import MiddlewareManager from "./middleware-manager";
+import { RetryController } from "./RetryController";
 
 export class Gofetch<T = any, F extends Request | Response = Request> {
     private readonly _fetch: Response | Request;
@@ -66,30 +67,56 @@ export class Gofetch<T = any, F extends Request | Response = Request> {
         return this.fetch.text();
     }
 
+    private async gofetch<R>(input: RequestInfo | URL, requestConfig: RequestConfig<R>, method: GoFetchMethod) {
+        let responseConfig: ResponseConfigReturn<Uint8Array>;
+        const controller = new RetryController();
+        const signal = controller.signal;
+        let shouldTry = true;
+        const onRetry = () => {
+            shouldTry = true;
+        }
+        while(shouldTry) {
+            shouldTry = false; // run only once
+            signal.addEventListener('retry', onRetry, {once: true}); // unless retried
+
+            const response = await fetch(this.resolveURL(input), {
+                ...requestConfig.options,
+                body: requestConfig.body,
+                method
+            });
+    
+            responseConfig = await this.dispatchResponseMiddlewares({
+                body: response.body,
+                options: {
+                    headers: iterableToObject(response.headers),
+                    status: response.status,
+                    statusText: response.statusText
+                }
+            }, controller);
+
+            requestConfig.options = deepMerge(requestConfig.options, responseConfig.options);
+            // if the body field is specified in the retry config then we consider this the new body
+            requestConfig.body = 'body' in responseConfig ? responseConfig.body ?? undefined : requestConfig.body;
+        }
+
+        // cleanup
+        signal.removeEventListener('retry', onRetry);
+
+        return responseConfig!;
+    }
+
     public async get<R = any>(input: RequestInfo | URL, options: GofetchRequestInit = {}): Promise<Gofetch<R, Response>> {
         if (isIterable(options.headers)) options.headers = iterableToObject(options.headers as Headers | [string, string][]);
-        let config = await this.dispatchRequestMiddlewares({
+        let requestConfig = await this.dispatchRequestMiddlewares<R>({
             options: deepMerge(this._defaultOptions, options)
         });
         
-        const response = await fetch(this.resolveURL(input), {
-            ...config.options,
-            method: 'GET'
-        });
-
-        const responseConfig = await this.dispatchResponseMiddlewares({
-            body: response.body,
-            options: {
-                headers: iterableToObject(response.headers),
-                status: response.status,
-                statusText: response.statusText
-            }
-        });
+        const responseConfig = await this.gofetch(input, requestConfig, 'GET');
 
         return new Gofetch<R, Response>(
             this._fetch.url,
             this._defaultOptions,
-            new Response(responseConfig.body, responseConfig.options),
+            new Response(responseConfig!.body, responseConfig!.options),
             this._middlewares
         );
     }
@@ -101,20 +128,7 @@ export class Gofetch<T = any, F extends Request | Response = Request> {
             options: deepMerge(this._defaultOptions, options)
         });
 
-        const response = await fetch(this.resolveURL(input), {
-            ...requestConfig.options,
-            body: requestConfig.body,
-            method: 'POST'
-        });
-
-        const responseConfig = await this.dispatchResponseMiddlewares({
-            body: response.body,
-            options: {
-                headers: iterableToObject(response.headers),
-                status: response.status,
-                statusText: response.statusText
-            }
-        });
+        const responseConfig = await this.gofetch(input, requestConfig, 'POST');
 
         return new Gofetch<R, Response>(
             this._fetch.url,
@@ -152,21 +166,43 @@ export class Gofetch<T = any, F extends Request | Response = Request> {
         return this._middlewares.remove(_id);
     }
 
-    public async dispatchResponseMiddlewares<D>(config: ResponseConfigReturn<D>) {
-        for (const middleware of this._middlewares) {
-            if (middleware.onResponse) {
-                const response = new Response(config.body, config.options);
-                config = await middleware.onResponse({
-                    body: response.clone().body,
-                    options: config.options,
-                    json: () => response.clone().json(),
-                    arrayBuffer: () => response.clone().arrayBuffer(),
-                    blob: () => response.clone().blob(),
-                    formData: () => response.clone().formData(),
-                    text: () => response.clone().text()
-                });
-            }
+    public async dispatchResponseMiddlewares<D>(config: ResponseConfigReturn<D>, controller: RetryController) {
+        let shouldBreak = false;
+        const onRetry = () => {
+            shouldBreak = true; // break middleware chain on retry
         }
+        controller.signal.addEventListener('retry', onRetry, {once: true});
+
+        for (const middleware of this._middlewares) {
+            if (!middleware.onResponse && !middleware.onError) continue;
+
+            const response = new Response(config.body, config.options);
+            const responseData = {
+                body: response.clone().body,
+                options: config.options,
+                json: () => response.clone().json(),
+                arrayBuffer: () => response.clone().arrayBuffer(),
+                blob: () => response.clone().blob(),
+                formData: () => response.clone().formData(),
+                text: () => response.clone().text()
+            };
+            config = responseData;
+
+            if (response.ok) {
+                if (middleware.onResponse)
+                    config = await middleware.onResponse(responseData);
+            } else {
+                if (middleware.onError) {
+                    const result = await middleware.onError(responseData, controller);
+                    if (result) config = result;
+                }
+            }
+
+            if (shouldBreak) break;
+        }
+
+        // cleanup
+        controller.signal.removeEventListener('retry', onRetry);
 
         return config;
     }
