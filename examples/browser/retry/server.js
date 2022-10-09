@@ -3,7 +3,7 @@ const http = require('http');
 const host = 'localhost';
 const port = 8080;
 
-const authToken = `Bearer ${Buffer.from("Hello World").toString('base64')}`;
+const authToken = Buffer.from("Hello World").toString('base64');
 const requestListener = function (req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
@@ -22,12 +22,20 @@ const requestListener = function (req, res) {
         return;
     }
 
-    if (req.headers.authorization === authToken) {
+    if (req.headers.authorization === `Bearer ${authToken}`) {
         res.writeHead(200);
-        res.end("Hello World");
+        console.log("Ok");
+        const json = {
+            message: "Hello World"
+        }
+        res.end(JSON.stringify(json));
     } else {
+        console.log("Error");
         res.writeHead(401);
-        res.end("Unauthorised");
+        const json = {
+            error: "Unathourised"
+        }
+        res.end(JSON.stringify(json));
     }
 };
 

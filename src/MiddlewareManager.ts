@@ -22,6 +22,10 @@ export default class MiddlewareManager {
         return this.middlewareMap.entries();
     }
 
+    get size() {
+        return this.middlewareMap.size;
+    }
+
     [Symbol.iterator]() {
         let index = -1;
         let data = Array.from(this.middlewareMap.values()).filter(Boolean) as Middleware<any>[];

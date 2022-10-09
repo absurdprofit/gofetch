@@ -8,7 +8,7 @@ export interface IdleTransformStreamProps<I, O> {
 
 export class IdleTransformStream<I, O = I> extends TransformStream<I, O> {
     constructor(props: IdleTransformStreamProps<I, O> = {}) {
-        const buffer: (O extends I ? I : O)[] = [];
+        const buffer: O[] = [];
         let finished = false;
         let promise: PromiseLike<void>;
         super({
@@ -28,12 +28,8 @@ export class IdleTransformStream<I, O = I> extends TransformStream<I, O> {
             },
             async transform(chunk) {
                 chunk = await chunk;
-                if (props.onChunk) chunk = props.onChunk(chunk) as any;
-                buffer.push(chunk as any); // buffer the chunks
-                
-                if (chunk === null) {
-                    return promise; // will terminate the transformer once promise resolves
-                }
+                if (props.onChunk)
+                    buffer.push(props.onChunk(chunk)); // buffer the chunks
             },
             flush() {
                 finished = true;
@@ -67,10 +63,6 @@ export class ProgressStream<I extends {'length': number | {'toString': ()=>strin
             }
         })
     }
-
-}
-
-export class GZipTransformStream extends TransformStream {
 
 }
 

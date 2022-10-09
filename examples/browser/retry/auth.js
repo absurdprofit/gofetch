@@ -13,7 +13,7 @@ gofetch.use({
 
             const options = {
                 headers: {
-                    authorization: authToken
+                    authorization: `Bearer ${authToken}`
                 }
             };
             return {
@@ -23,6 +23,6 @@ gofetch.use({
     }
 });
 
-gofetch.get(apiURL).then(res => res.text()).then(resText => {
-    document.body.innerText = `Server says: ${resText}`;
+gofetch.get(apiURL).then(res => res.json()).then(payload => {
+    document.body.innerText = `Server says: ${payload.message}`;
 });

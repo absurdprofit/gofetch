@@ -3,7 +3,7 @@ const path = require('path');
 module.exports = {
   mode: 'development',
   entry: {
-    index: path.resolve(__dirname, 'src', 'gofetch.ts'),
+    index: path.resolve(__dirname, 'src', 'index.ts'),
     ['common/streams']: path.resolve(__dirname, 'src', 'common', 'streams.ts')
   },
   module: {

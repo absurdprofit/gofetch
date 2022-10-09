@@ -1,4 +1,5 @@
 import { RetryController } from "../RetryController";
+import { GofetchError } from "./utils";
 
 export type RequestOrResponse<T extends Request | Response> = T extends Request ? Request : Response;
 
@@ -9,7 +10,7 @@ interface RangeObject {
 type RangeArray = [number, number?];
 export type Range = RangeObject | RangeArray | number;
 // TODO add developer interface for specifying range requests
-export type GofetchRequestInit = Partial<Pick<RequestInit, 'cache' | 'credentials' | 'headers' | 'integrity' | 'redirect' | 'referrer' | 'referrerPolicy'>>;
+export type GofetchRequestInit = Partial<Pick<RequestInit, 'cache' | 'credentials' | 'headers' | 'integrity' | 'redirect' | 'referrer' | 'referrerPolicy' | 'signal' | 'mode' | 'keepalive' | 'window'>>;
 export type GofetchResponseInit = Partial<ResponseInit>;
 
 type GetExclusiveKeys<
@@ -40,27 +41,27 @@ export type DeepMerge<T, U> =
     : T | U;
 
 
-export interface RequestConfig<D> {
-    body?: BodyInit | ReadableStream<D>;
+export interface RequestConfig<B = any> {
+    body?: BodyInit | ReadableStream<B>;
     options?: GofetchRequestInit;
 }
 
-export interface ResponseConfig<D> {
-  body: BodyInit | ReadableStream<D> | null;
-  options: GofetchResponseInit;
-  json(): Promise<D>;
+export interface ResponseConfig<B> extends GofetchResponseInit {
+  body: BodyInit | ReadableStream<B> | null;
+  json<D>(): Promise<D>;
   arrayBuffer(): Promise<ArrayBuffer>;
   text(): Promise<string>;
   blob(): Promise<Blob>;
   formData(): Promise<FormData>;
 }
 
-export type ResponseConfigReturn<D> = Pick<ResponseConfig<D>, 'body' | 'options'>;
+export type ResponseConfigReturn<B = any> = Pick<ResponseConfig<B>, 'body' | 'headers'>;
 
-export interface Middleware<D> {
-  onRequest?(config: RequestConfig<D>): PromiseLike<RequestConfig<D>> | RequestConfig<D>;
-  onResponse?(config: ResponseConfig<D>): PromiseLike<ResponseConfigReturn<D>> | ResponseConfigReturn<D>;
-  onError?(config: ResponseConfig<D>, controller: RetryController): Promise<PromiseLike<ResponseConfigReturn<D>> | ResponseConfigReturn<D> | void>;
+export interface Middleware<B = any> {
+  onRequest?(config: RequestConfig<B>): PromiseLike<RequestConfig<B> | void> | RequestConfig<B> | void;
+  onResponse?(config: ResponseConfig<B>): PromiseLike<ResponseConfigReturn<B> | void> | ResponseConfigReturn<B> | void;
+  onError?(error: GofetchError, controller: RetryController): PromiseLike<ResponseConfigReturn<B> | void> | ResponseConfigReturn<B> | void;
 }
 
-export type GoFetchMethod = 'GET' | 'POST';
+export type GofetchMethod = 'GET' | 'POST' | 'HEAD' | 'OPTIONS' | 'PATCH' | 'DELETE' | 'PUT';
+
