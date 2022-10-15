@@ -2,12 +2,16 @@
   "name": "gofetch",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "build/index.mjs",
+  "types": "build/index.d.ts",
+  "files": [
+    "build"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "webpack"
   },
-  "author": "",
+  "author": "nxtexe",
   "license": "ISC",
   "devDependencies": {
     "ts-loader": "^9.3.1",

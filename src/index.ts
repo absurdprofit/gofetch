@@ -75,6 +75,13 @@ export class Gofetch<F extends Request | Response = Request> {
         return this.fetch.text();
     }
 
+    /**
+     * 
+     * @param input Input URL of the request resource.
+     * @param requestConfig The config options that will be passed to fetch().
+     * @param method The HTTP method of the request
+     * @returns A Gofetch Response init.
+     */
     public async gofetch<B>(input: RequestInfo | URL, requestConfig: RequestConfig<B>, method: GofetchMethod | string) {
         let responseConfig: ResponseConfigReturn<B> & GofetchResponseInit;
         const controller = new RetryController();
@@ -268,10 +275,21 @@ export class Gofetch<F extends Request | Response = Request> {
         );
     }
 
-    public createInstance(baseURL: string, options: GofetchRequestInit = {}) {
+    /**
+     * 
+     * @param baseURL The base URL prepended to relative identifiers.
+     * @param options The config options that will be passed to fetch().
+     * @param body Optional body of the request.
+     * @returns A Gofetch Request instance.
+     */
+    public createInstance(baseURL: string, options: GofetchRequestInit = {}, body?: BodyInit | null) {
         // merge defaults
         options = deepMerge(this._defaultOptions, options);
-        return new Gofetch(baseURL, options, new Request(baseURL), new MiddlewareManager(this._middlewares));
+        const _fetch = new Request(baseURL, {
+            ...options,
+            body
+        });
+        return new Gofetch(baseURL, options, _fetch, new MiddlewareManager(this._middlewares));
     }
 
     /**
@@ -379,5 +397,6 @@ export class Gofetch<F extends Request | Response = Request> {
 
 // on platforms where baseURL is impossible to assume i.e. deno or node
 // we export the constructor instead
-export default globalThis.location ? new Gofetch(window.location.origin) : Gofetch;
 export * from './common/types';
+export * from './common/utils';
+export {RetryController} from './RetryController';
