@@ -7,7 +7,16 @@ import {
     RequestOrResponse,
     ResponseConfigReturn
 } from "./common/types";
-import { deepMerge, isIterable, GofetchError, iterableToObject, resolveURL, updateResponseConfig } from "./common/utils";
+import {
+    deepMerge,
+    isIterable,
+    GofetchError,
+    iterableToObject,
+    resolveURL,
+    createJSONIndexProxy,
+    camelToSnakeCase,
+    CAMEL_CASE_RE
+} from "./common/utils";
 import MiddlewareManager from "./MiddlewareManager";
 import { RetryController } from "./RetryController";
 
@@ -15,6 +24,7 @@ export class Gofetch<F extends Request | Response = Request> {
     private readonly _fetch: Response | Request;
     private readonly _defaultOptions: GofetchRequestInit | GofetchResponseInit;
     private readonly _middlewares = new MiddlewareManager();
+    public createJSONIndexProxy: (<D extends {}>(json: D) => D) | null;
 
     constructor(
         baseURL: RequestInfo | URL,
@@ -25,6 +35,13 @@ export class Gofetch<F extends Request | Response = Request> {
         this._fetch = fetch;
         this._defaultOptions = options;
         this._middlewares = middlewares;
+        this.createJSONIndexProxy = (json) => {
+            return createJSONIndexProxy(json, new RegExp(CAMEL_CASE_RE), (index) => {
+                index = index.toString();
+                
+                return camelToSnakeCase(index);
+            });
+        }
     }
 
     private get fetch() {
@@ -67,8 +84,12 @@ export class Gofetch<F extends Request | Response = Request> {
         return this.fetch.formData();
     }
 
-    public json<T = any>(): Promise<T> {
-        return this.fetch.json();
+    public async json<T = any>(): Promise<T> {
+        const json = await this.fetch.json();
+        if (!this.createJSONIndexProxy)
+            return json;
+
+        return this.createJSONIndexProxy(json);
     }
 
     public text() {
@@ -82,8 +103,8 @@ export class Gofetch<F extends Request | Response = Request> {
      * @param method The HTTP method of the request
      * @returns A Gofetch Response init.
      */
-    public async gofetch<B>(input: RequestInfo | URL, requestConfig: RequestConfig<B>, method: GofetchMethod | string) {
-        let responseConfig: ResponseConfigReturn<B> & GofetchResponseInit;
+    public async gofetch<B>(input: RequestInfo | URL, options: GofetchRequestInit, method: GofetchMethod | string, body?: BodyInit | ReadableStream<B>) {
+        let response: Gofetch<Response>;
         const controller = new RetryController();
         const signal = controller.signal;
         let shouldTry = true;
@@ -91,35 +112,37 @@ export class Gofetch<F extends Request | Response = Request> {
             shouldTry = true;
         }
 
+        let request = await this.dispatchRequestMiddlewares<B>(input, {
+            body,
+            ...deepMerge(this._defaultOptions, options)
+        });
         while(true) {
             shouldTry = false; // run only once
             signal.addEventListener('retry', onRetry, {once: true}); // unless retried
 
-            const response = await fetch(resolveURL(input, this._fetch.url), {
-                ...requestConfig.options,
-                body: requestConfig.body,
+            const rawResponse = await fetch(resolveURL(input, this._fetch.url), {
+                ...request,
+                body: request.body,
                 method
             });
     
-            responseConfig = await this.dispatchResponseMiddlewares({
-                body: response.body,
-                headers: iterableToObject(response.headers),
-                status: response.status,
-                statusText: response.statusText
+            response = await this.dispatchResponseMiddlewares(input, {
+                body: rawResponse.body,
+                headers: iterableToObject(rawResponse.headers),
+                status: rawResponse.status,
+                statusText: rawResponse.statusText
             }, controller);
 
-            if (responseConfig.headers) {
-                // merge old headers with new headers
-                if (isIterable(responseConfig.headers))
-                    responseConfig.headers = iterableToObject(responseConfig.headers as Headers | [string, string][]);
-                if (!requestConfig.options) requestConfig.options = {};
-                if (!requestConfig.options.headers)
-                    requestConfig.options.headers = responseConfig.headers;
-                else
-                    requestConfig.options.headers = deepMerge(requestConfig.options.headers, responseConfig.headers);
+            // merge old headers with new headers
+            if (!request.headers)
+                request.headers = response.headers;
+            else {
+                if (isIterable(request.headers)) request.headers = iterableToObject(request.headers as Headers | [string, string][]);
+                request.headers = deepMerge(request.headers, response.headers);
             }
+                
             // if the body field is specified in the retry config then we consider this the new body
-            requestConfig.body = 'body' in responseConfig ? responseConfig.body ?? undefined : requestConfig.body;
+            request.body = 'body' in response ? response.body ?? undefined : request.body;
             
             if (!shouldTry) break;
         }
@@ -127,152 +150,42 @@ export class Gofetch<F extends Request | Response = Request> {
         // cleanup
         signal.removeEventListener('retry', onRetry);
 
-        return responseConfig;
+        return response;
     }
 
     public async get<B = any>(input?: RequestInfo | URL, options: GofetchRequestInit = {}): Promise<Gofetch<Response>> {
         if (isIterable(options.headers)) options.headers = iterableToObject(options.headers as Headers | [string, string][]);
-        let requestConfig = await this.dispatchRequestMiddlewares<B>({
-            options: deepMerge(this._defaultOptions, options)
-        });
-        
-        const responseConfig = await this.gofetch<B>(input ?? this.url, requestConfig, 'GET');
-
-        return new Gofetch<Response>(
-            this._fetch.url,
-            this._defaultOptions,
-            new Response(responseConfig!.body, {
-                headers: responseConfig.headers,
-                status: responseConfig.status,
-                statusText: responseConfig.statusText
-            }),
-            this._middlewares
-        );
+        return await this.gofetch<B>(input ?? this.url, options, 'GET');
     }
 
     public async head<B = any>(input?: RequestInfo | URL, options: GofetchRequestInit = {}): Promise<Gofetch<Response>> {
         if (isIterable(options.headers)) options.headers = iterableToObject(options.headers as Headers | [string, string][]);
-        let requestConfig = await this.dispatchRequestMiddlewares<B>({
-            options: deepMerge(this._defaultOptions, options)
-        });
-        
-        const responseConfig = await this.gofetch<B>(input ?? this.url, requestConfig, 'HEAD');
-
-        return new Gofetch<Response>(
-            this._fetch.url,
-            this._defaultOptions,
-            new Response(responseConfig!.body, {
-                headers: responseConfig.headers,
-                status: responseConfig.status,
-                statusText: responseConfig.statusText
-            }),
-            this._middlewares
-        );
+        return await this.gofetch<B>(input ?? this.url, options, 'HEAD');
     }
 
     public async post<B = any>(input?: RequestInfo | URL, body?: BodyInit | ReadableStream<B>, options: GofetchRequestInit = {}) {
         if (isIterable(options.headers)) options.headers = iterableToObject(options.headers as Headers | [string, string][]);
-        let requestConfig = await this.dispatchRequestMiddlewares<B>({
-            body,
-            options: deepMerge(this._defaultOptions, options)
-        });
-
-        const responseConfig = await this.gofetch<B>(input ?? this.url, requestConfig, 'POST');
-
-        return new Gofetch<Response>(
-            this._fetch.url,
-            this._defaultOptions,
-            new Response(responseConfig.body, {
-                headers: responseConfig.headers,
-                status: responseConfig.status,
-                statusText: responseConfig.statusText
-            }),
-            this._middlewares
-        );
+        return await this.gofetch<B>(input ?? this.url, options, 'POST', body);
     }
 
     public async options<B = any>(input?: RequestInfo | URL, body?: BodyInit | ReadableStream<B>, options: GofetchRequestInit = {}) {
         if (isIterable(options.headers)) options.headers = iterableToObject(options.headers as Headers | [string, string][]);
-        let requestConfig = await this.dispatchRequestMiddlewares<B>({
-            body,
-            options: deepMerge(this._defaultOptions, options)
-        });
-
-        const responseConfig = await this.gofetch<B>(input ?? this.url, requestConfig, 'OPTIONS');
-
-        return new Gofetch<Response>(
-            this._fetch.url,
-            this._defaultOptions,
-            new Response(responseConfig.body, {
-                headers: responseConfig.headers,
-                status: responseConfig.status,
-                statusText: responseConfig.statusText
-            }),
-            this._middlewares
-        );
+        return await this.gofetch<B>(input ?? this.url, options, 'OPTIONS', body);
     }
 
     public async delete<B = any>(input?: RequestInfo | URL, body?: BodyInit | ReadableStream<B>, options: GofetchRequestInit = {}) {
         if (isIterable(options.headers)) options.headers = iterableToObject(options.headers as Headers | [string, string][]);
-        let requestConfig = await this.dispatchRequestMiddlewares<B>({
-            body,
-            options: deepMerge(this._defaultOptions, options)
-        });
-
-        const responseConfig = await this.gofetch<B>(input ?? this.url, requestConfig, 'DELETE');
-
-        return new Gofetch<Response>(
-            this._fetch.url,
-            this._defaultOptions,
-            new Response(responseConfig.body, {
-                headers: responseConfig.headers,
-                status: responseConfig.status,
-                statusText: responseConfig.statusText
-            }),
-            this._middlewares
-        );
+        return await this.gofetch<B>(input ?? this.url, options, 'DELETE', body);
     }
 
     public async patch<B = any>(input?: RequestInfo | URL, body?: BodyInit | ReadableStream<B>, options: GofetchRequestInit = {}) {
         if (isIterable(options.headers)) options.headers = iterableToObject(options.headers as Headers | [string, string][]);
-        let requestConfig = await this.dispatchRequestMiddlewares<B>({
-            body,
-            options: deepMerge(this._defaultOptions, options)
-        });
-
-        const responseConfig = await this.gofetch<B>(input ?? this.url, requestConfig, 'PATCH');
-
-        return new Gofetch<Response>(
-            this._fetch.url,
-            this._defaultOptions,
-            new Response(responseConfig.body, {
-                headers: responseConfig.headers,
-                status: responseConfig.status,
-                statusText: responseConfig.statusText
-            }),
-            this._middlewares
-        );
+        return await this.gofetch<B>(input ?? this.url, options, 'PATCH', body);
     }
 
     public async put<B = any>(input?: RequestInfo | URL, body?: BodyInit | ReadableStream<B>, options: GofetchRequestInit = {}) {
         if (isIterable(options.headers)) options.headers = iterableToObject(options.headers as Headers | [string, string][]);
-        let requestConfig = await this.dispatchRequestMiddlewares<B>({
-            body,
-            options: deepMerge(this._defaultOptions, options)
-        });
-
-        const responseConfig = await this.gofetch<B>(input ?? this.url, requestConfig, 'PUT');
-
-        return new Gofetch<Response>(
-            this._fetch.url,
-            this._defaultOptions,
-            new Response(responseConfig.body, {
-                headers: responseConfig.headers,
-                status: responseConfig.status,
-                statusText: responseConfig.statusText
-            }),
-            this._middlewares
-        );
+        return await this.gofetch<B>(input ?? this.url, options, 'PUT', body);
     }
 
     /**
@@ -282,7 +195,7 @@ export class Gofetch<F extends Request | Response = Request> {
      * @param body Optional body of the request.
      * @returns A Gofetch Request instance.
      */
-    public createInstance(baseURL: string, options: GofetchRequestInit = {}, body?: BodyInit | null) {
+    public createInstance(baseURL: RequestInfo | URL, options: GofetchRequestInit = {}, body?: BodyInit | null) {
         // merge defaults
         options = deepMerge(this._defaultOptions, options);
         const _fetch = new Request(baseURL, {
@@ -310,62 +223,58 @@ export class Gofetch<F extends Request | Response = Request> {
         return this._middlewares.remove(_id);
     }
 
-    private async dispatchResponseMiddlewares<D>(config: ResponseConfigReturn<D> & GofetchResponseInit, controller: RetryController) {
+    private async dispatchResponseMiddlewares<D>(input: RequestInfo | URL, config: ResponseConfigReturn<D> & GofetchResponseInit, controller: RetryController) {
         let shouldBreak = false;
         const onRetry = () => {
             shouldBreak = true; // break middleware chain on retry
         }
         controller.signal.addEventListener('retry', onRetry, {once: true});
         
-        let response = new Response(config.body, {
-            headers: config.headers,
-            status: config.status,
-            statusText: config.statusText
-        });
+        let response = new Gofetch<Response>(
+            input,
+            {},
+            new Response(config.body, {
+                headers: config.headers,
+                status: config.status,
+                statusText: config.statusText
+            })
+        );
 
         for (const middleware of this._middlewares) {
             if (!middleware.onResponse && !middleware.onError) continue;
 
-            response = new Response(config.body, {
-                headers: config.headers,
-                status: config.status,
-                statusText: config.statusText
-            });
-            const responseData = {
-                body: response.clone().body,
-                headers: config.headers,
-                status: config.status,
-                statusText: config.statusText,
-                json: () => response.clone().json(),
-                arrayBuffer: () => response.clone().arrayBuffer(),
-                blob: () => response.clone().blob(),
-                formData: () => response.clone().formData(),
-                text: () => response.clone().text()
-            };
-
-            if (response.ok) {
+            if (response.raw.ok) {
                 if (middleware.onResponse) {
-                    const newConfig = await middleware.onResponse(responseData);
-                    if (newConfig)
-                        config = {
-                            ...updateResponseConfig(responseData, newConfig),
-                            ...config
-                        };
+                    const newConfig = await middleware.onResponse(response);
+                    if (newConfig) {
+                        config = deepMerge(config, newConfig);
+                        config.body = newConfig.body;
+                    }
                 }
                     
             } else {
-                const gofetch = new Gofetch<Response>(response.url, response, response);
-                const error = new GofetchError(gofetch);
+                const error = new GofetchError(response);
                 if (middleware.onError) {
                     const newConfig = await middleware.onError(error, controller);
-                    if (newConfig)
-                        config = {
-                            ...updateResponseConfig(responseData, newConfig),
-                            ...config
-                        };
+                    if (newConfig) {
+                        config = deepMerge(config, newConfig);
+                        config.body = newConfig.body;
+                    }
                 }
             }
 
+            if (config.body instanceof ReadableStream && config.body.locked)
+                config.body = response.body;
+            response = new Gofetch<Response>(
+                input,
+                {},
+                new Response(config.body, {
+                    headers: config.headers,
+                    status: config.status,
+                    statusText: config.statusText
+                })
+            );
+            
             if (shouldBreak) break;
         }
 
@@ -373,27 +282,49 @@ export class Gofetch<F extends Request | Response = Request> {
         controller.signal.removeEventListener('retry', onRetry);
         
         // no retry signalled throw unhandled error
-        if (!shouldBreak && !response.ok) {
-            const gofetch = new Gofetch<Response>(response.url, response, response);
-            const error = new GofetchError(gofetch);
+        if (!shouldBreak && !response.raw.ok) {
+            const error = new GofetchError(response);
             throw error;
         }
 
-        return config;
+        return response;
     }
 
-    private async dispatchRequestMiddlewares<D>(config: RequestConfig<D>) {
+    private async dispatchRequestMiddlewares<D>(input: RequestInfo | URL, config: RequestConfig<D>) {
+        const {body, ...options} = config;
+        let request = this.createInstance(input, options, body);
         for (const middleware of this._middlewares) {
+            const {body, ...options} = config;
+            request = this.createInstance(input, options, body);
             if (middleware.onRequest) {
-                const newConfig = await middleware.onRequest(config);
+                const newConfig = await middleware.onRequest(request);
                 if (newConfig)
-                    config = newConfig;
+                    config = deepMerge(config, newConfig);
             }
         }
 
         return config;
     }
 }
+
+declare global {
+    module Deno {
+        function cwd(): string;
+    }
+}
+
+let baseURL: string;
+if (globalThis.location) {
+    baseURL = globalThis.location.origin;
+} else if (globalThis.process) {
+    baseURL = globalThis.process.cwd();
+} else if (globalThis.Deno) {
+    baseURL = globalThis.Deno.cwd();
+} else {
+    throw new Error('No Base URL');
+}
+
+export default new Gofetch(baseURL);
 
 // on platforms where baseURL is impossible to assume i.e. deno or node
 // we export the constructor instead

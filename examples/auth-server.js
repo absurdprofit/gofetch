@@ -26,8 +26,8 @@ const requestListener = function (req, res) {
         res.writeHead(200);
         console.log("Ok");
         const json = {
-            message: "Hello World"
-        }
+            message_payload: "Hello World"
+        };
         res.end(JSON.stringify(json));
     } else {
         console.log("Error");

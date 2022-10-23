@@ -1,6 +1,6 @@
-import {encryptedClient} from './clients.js';
+import {encryptedClient} from '../clients.js';
 import {BufferStream} from '/build/common/streams.mjs';
-import { deriveKey, EncryptionStream } from './utils.js';
+import { deriveKey, EncryptionStream } from '../common/utils.js';
 
 const videoURL = 'video.enc';
 const onplay = async () => {

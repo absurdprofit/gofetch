@@ -1,7 +1,13 @@
-import {videoClient}from './clients.js';
-import {BufferStream, ProgressStream} from '../../build/common/streams.mjs';
+import {videoClient}from '../common/clients.js';
+import {BufferStream, ProgressStream} from '../../../build/common/streams.mjs';
 
-const videoURL = 'video.gzip';
+/****************
+ * Example of a GZIP encoded webm video
+ * streamed, decoded and played using the MediaSource API.
+ * **************
+ */
+
+const videoURL = './videos/video.gzip';
 const onplay = async () => {
     let newHandle;
     if (saveToDisk) {
@@ -10,6 +16,7 @@ const onplay = async () => {
 
     const response = await videoClient.get(videoURL);
     if (!video) return;
+    // when enough chunks have been decoded and queued
     video.onloadedmetadata = () => {
         console.log("Play");
         video.play();
@@ -18,22 +25,19 @@ const onplay = async () => {
     const mediaSource = new MediaSource();
     video.src = URL.createObjectURL(mediaSource);
     mediaSource.addEventListener('sourceopen', async () => {
+        // create video buffer
         const sourceBuffer = mediaSource.addSourceBuffer('video/webm; codecs="vorbis,vp8"');
+        const wait = () => new Promise((resolve) => sourceBuffer.onupdateend = resolve);
         const writable = new BufferStream({
-            onChunk: (chunk) => {
-                requestIdleCallback(() => {
-                    if (video.error) return;
-                    sourceBuffer.appendBuffer(chunk);
-                });
+            onChunk: async (chunk) => {
+                if (video.error) return;
+                sourceBuffer.appendBuffer(chunk);
+                await wait();
 
                 console.log("on Chunk");
             },
             onEnd: () => {
-                requestIdleCallback(() => {
-                    sourceBuffer.onupdateend = () => {
-                        mediaSource.endOfStream();
-                    }
-                });
+                sourceBuffer.addEventListener('updateend', mediaSource.endOfStream);
                 
                 console.log("on End");
             }

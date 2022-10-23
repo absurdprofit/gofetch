@@ -1,3 +1,4 @@
+import { Gofetch } from "../index";
 import { RetryController } from "../RetryController";
 import { GofetchError } from "./utils";
 
@@ -41,9 +42,8 @@ export type DeepMerge<T, U> =
     : T | U;
 
 
-export interface RequestConfig<B = any> {
-    body?: BodyInit | ReadableStream<B>;
-    options?: GofetchRequestInit;
+export interface RequestConfig<B = any> extends GofetchRequestInit {
+  body?: BodyInit | ReadableStream<B>;
 }
 
 export interface ResponseConfig<B> extends GofetchResponseInit {
@@ -58,8 +58,8 @@ export interface ResponseConfig<B> extends GofetchResponseInit {
 export type ResponseConfigReturn<B = any> = Pick<ResponseConfig<B>, 'body' | 'headers'>;
 
 export interface Middleware<B = any> {
-  onRequest?(config: RequestConfig<B>): PromiseLike<RequestConfig<B> | void> | RequestConfig<B> | void;
-  onResponse?(config: ResponseConfig<B>): PromiseLike<ResponseConfigReturn<B> | void> | ResponseConfigReturn<B> | void;
+  onRequest?(config: Gofetch<Request>): PromiseLike<RequestConfig<B> | void> | RequestConfig<B> | void;
+  onResponse?(config: Gofetch<Response>): PromiseLike<ResponseConfigReturn<B> | void> | ResponseConfigReturn<B> | void;
   onError?(error: GofetchError, controller: RetryController): PromiseLike<ResponseConfigReturn<B> | void> | ResponseConfigReturn<B> | void;
 }
 

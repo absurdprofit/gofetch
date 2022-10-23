@@ -1,5 +1,5 @@
-import gofetch from '../../build/index.mjs';
-import {IdleTransformStream} from '../../build/common/streams.mjs';
+import gofetch from '../../../build/index.mjs';
+import {IdleTransformStream} from '../../../build/common/streams.mjs';
 import { deriveKey, DecryptionStream } from './utils.js';
 
 const videoClient = gofetch.createInstance(new URL('./examples/browser/videos', window.location.origin));
@@ -15,7 +15,6 @@ videoClient.use({
         }
 
         return {
-            options: config.options,
             body: readable
         };
     }

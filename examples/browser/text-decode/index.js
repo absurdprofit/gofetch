@@ -1,21 +1,22 @@
-import gofetch from '../../build/index.mjs';
-import {BufferStream, IdleTransformStream} from '../../build/common/streams.mjs';
+import gofetch from '../../../build/index.mjs';
+import {BufferStream, IdleTransformStream} from '../../../build/common/streams.mjs';
 
 gofetch.use({
     onResponse: async (config) => {
-        let body = config.body;
         const {readable, writable} = new TransformStream();
-        if (body) {
-            body
+        if (config.body) {
+            config.body
             .pipeThrough(new IdleTransformStream())
             .pipeThrough(new TextDecoderStream())
             .pipeTo(writable);
         }
 
         return {
-            options: config.options,
             body: readable
         };
+    },
+    onRequest: () => {
+        
     }
 });
 

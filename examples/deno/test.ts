@@ -21,29 +21,23 @@ class AuthMiddleware implements Middleware {
 
         this.authenticating = false;
 
-        config.options = {
-            ...config.options,
+        return {
             headers: {
                 Authorization: `Bearer ${this.authToken}`
             }
-        };
-
-        return config;
+        }
     }
 }
 
 gofetch.use(new AuthMiddleware());
 
 interface Payload {
-    message: string;
+    messagePayload: string;
 }
 
-gofetch.get<Payload>('/')
-.then(res => res.json())
+gofetch.get()
+.then(res => res.json<Payload>())
+.then(json => json.messagePayload)
 .then(console.log)
 .catch(console.error);
 
-(async function () {
-    const res = await gofetch.get('/');
-    res.delete()
-})();

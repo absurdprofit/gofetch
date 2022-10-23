@@ -1,4 +1,4 @@
-import { Gofetch, ResponseConfig, ResponseConfigReturn } from "../index";
+import { Gofetch } from "../index";
 import { DeepMerge } from "./types";
 
 export function isAbsoluteURL(url: RequestInfo | URL) {
@@ -73,7 +73,6 @@ export class GofetchError extends Error {
     }
 }
 
-
 export function resolveURL(path: RequestInfo | URL, base: URL | string) {
     if (isAbsoluteURL(path)) {
         return path;
@@ -84,16 +83,64 @@ export function resolveURL(path: RequestInfo | URL, base: URL | string) {
     return new URL(path, base);
 }
 
-export function updateResponseConfig<D>(config: ResponseConfig<D>, newConfig: ResponseConfigReturn<D>) {
-    if ('body' in newConfig) config.body = newConfig.body;
-    if (newConfig.headers) {
-        if (isIterable(newConfig.headers))
-        newConfig.headers = iterableToObject(newConfig.headers as Headers | [string, string][]);
-        if (!config.headers)
-            config.headers = newConfig.headers;
-        else
-            config.headers = deepMerge(newConfig.headers, config.headers);
+export function createJSONIndexProxy<T extends {}>(
+    obj: T,
+    indexTest: RegExp | string,
+    indexTransformer: (index: string | symbol) => PropertyKey
+) {
+    const testIndex = (p: string | symbol) => {
+        p = p.toString();
+        if (typeof indexTest === "string") {
+            return p === indexTest;
+        } else {
+            return indexTest.test(p);
+        }
     }
-
-    return config;
+    const transformKey = (p: string | symbol) => {
+        let propertyKey: PropertyKey = p;
+        if (testIndex(p)) {
+            propertyKey = indexTransformer(p);
+        }
+        return propertyKey;
+    }
+    return new Proxy(
+        obj,
+        {
+            get(target, p, receiver) {
+                const propertyKey = transformKey(p);
+                return Reflect.get(target, propertyKey, receiver);
+            },
+            set(target, p, newValue, receiver) {
+                const propertyKey = transformKey(p);
+                return Reflect.set(target, propertyKey, newValue, receiver);
+            },
+            defineProperty(target, property, attributes) {
+                const propertyKey = transformKey(property);
+                return Reflect.defineProperty(target, propertyKey, attributes);
+            },
+            deleteProperty(target, p) {
+                const propertyKey = transformKey(p);
+                return Reflect.deleteProperty(target, propertyKey);
+            },
+            getOwnPropertyDescriptor(target, p) {
+                const propertyKey = transformKey(p);
+                return Reflect.getOwnPropertyDescriptor(target, propertyKey);
+            },
+            has(target, p) {
+                const propertyKey = transformKey(p);
+                return Reflect.has(target, propertyKey);
+            },
+        }
+    );
 }
+
+export function camelToSnakeCase(str: string) {
+    return str.replace(/[A-Z]/g, (letter, offset) => {
+        if (!offset)
+            return letter.toLowerCase();
+            
+        return `_${letter.toLowerCase()}`;
+    });
+};
+
+export const CAMEL_CASE_RE = '^[a-zA-Z]+([A-Z][a-z]+)+$';

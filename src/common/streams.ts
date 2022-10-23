@@ -1,12 +1,12 @@
 export interface IdleTransformStreamProps<I, O> {
     onStart?(): void;
-    onChunk?(chunk: I): O;
+    onChunk?(chunk: I): O | PromiseLike<O>;
     onEnd?(): void;
     writableStrategy?: QueuingStrategy<I>;
     readableStrategy?: QueuingStrategy<O>;
 }
 
-export class IdleTransformStream<I, O = I> extends TransformStream<I, O> {
+export class IdleTransformStream<I extends O = any, O = I> extends TransformStream<I, O> {
     constructor(props: IdleTransformStreamProps<I, O> = {}) {
         const buffer: O[] = [];
         let finished = false;
@@ -29,7 +29,9 @@ export class IdleTransformStream<I, O = I> extends TransformStream<I, O> {
             async transform(chunk) {
                 chunk = await chunk;
                 if (props.onChunk)
-                    buffer.push(props.onChunk(chunk)); // buffer the chunks
+                    buffer.push(await props.onChunk(chunk)); // buffer the chunks
+                else
+                    buffer.push(chunk);
             },
             flush() {
                 finished = true;
@@ -91,7 +93,7 @@ export class LogStream<I> extends TransformStream<I, I> {
 
 export interface BufferStreamProps<W> {
     onStart?(): void;
-    onChunk?(chunk: W): void;
+    onChunk?(chunk: W): void | PromiseLike<void>;
     onEnd?(): void;
     queuingStrategy?: QueuingStrategy<W>;
 }
@@ -100,11 +102,8 @@ export class BufferStream<W> extends WritableStream<W> {
     constructor(props: BufferStreamProps<W>) {
         super({
             start() { if (props.onStart) props.onStart(); },
-            write(chunk) {
-                return new Promise((resolve) => {
-                    if (props.onChunk) props.onChunk(chunk);
-                    resolve();
-                })
+            async write(chunk) {
+                if (props.onChunk) await props.onChunk(chunk);
             },
             close() {
                 if (props.onEnd) props.onEnd();
