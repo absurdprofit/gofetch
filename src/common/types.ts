@@ -11,7 +11,7 @@ interface RangeObject {
 type RangeArray = [number, number?];
 export type Range = RangeObject | RangeArray | number;
 // TODO add developer interface for specifying range requests
-export type GofetchRequestInit = Partial<Pick<RequestInit, 'cache' | 'credentials' | 'headers' | 'integrity' | 'redirect' | 'referrer' | 'referrerPolicy' | 'signal' | 'mode' | 'keepalive' | 'window'>>;
+export type GofetchRequestInit = Partial<Pick<RequestInit, 'cache' | 'credentials' | 'headers' | 'integrity' | 'redirect' | 'referrer' | 'referrerPolicy' | 'signal' | 'mode' | 'keepalive' | 'window' | 'method'>>;
 export type GofetchResponseInit = Partial<ResponseInit>;
 
 type GetExclusiveKeys<

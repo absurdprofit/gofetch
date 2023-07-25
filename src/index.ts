@@ -112,6 +112,7 @@ export class Gofetch<F extends Request | Response = Request> {
             shouldTry = true;
         }
 
+        options.method = method;
         let request = await this.dispatchRequestMiddlewares<B>(input, {
             body,
             ...deepMerge(this._defaultOptions, options)
