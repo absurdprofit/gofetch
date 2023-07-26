@@ -16,17 +16,18 @@ function isPlainObject<T extends {}>(obj: any): obj is T {
 }
 
 export function deepMerge<T extends Record<any, any>, U extends Record<any, any>>(obj1: T, obj2: U): DeepMerge<T, U> {
-    if (isPlainObject(obj1)) {
+    const clone = {...obj1};
+    if (isPlainObject(clone)) {
         for (const key in obj2) {
             if (isPlainObject(obj2[key])) {
-                Object.assign(obj1, {[key]: {}});
-                deepMerge(obj1[key as keyof T], obj2[key]);
+                Object.assign(clone, {[key]: {}});
+                deepMerge(clone[key as keyof T], obj2[key]);
             } else {
-                Object.assign(obj1, { [key]: obj2[key] });
+                Object.assign(clone, { [key]: obj2[key] });
             }
         }
 
-        return obj1 as any; // properties merged into obj1 and overwrite
+        return clone as any; // properties merged into obj1 and overwrite
     } else {
         throw new TypeError('Parameter is not of type Object');
     }
