@@ -15,13 +15,16 @@ function isPlainObject<T extends {}>(obj: any): obj is T {
     return (obj && typeof obj === 'object' && obj.constructor === Object);
 }
 
+function isObject<T extends {}>(obj: any): obj is T {
+    return (obj && typeof obj === 'object');
+}
+
 export function deepMerge<T extends Record<any, any>, U extends Record<any, any>>(obj1: T, obj2: U): DeepMerge<T, U> {
     const clone = {...obj1};
-    if (isPlainObject(clone)) {
+    if (isObject(clone)) {
         for (const key in obj2) {
             if (isPlainObject(obj2[key])) {
-                Object.assign(clone, {[key]: {}});
-                deepMerge(clone[key as keyof T], obj2[key]);
+                clone[key] = deepMerge(clone[key as keyof T], obj2[key]) as T[Extract<keyof U, string>];
             } else {
                 Object.assign(clone, { [key]: obj2[key] });
             }

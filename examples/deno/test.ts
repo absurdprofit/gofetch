@@ -35,8 +35,7 @@ interface Payload {
     messagePayload: string;
 }
 
-const controller = new AbortController();
-gofetch.get(undefined, {signal: controller.signal})
+gofetch.get()
 .then(res => res.json<Payload>())
 .then(json => json.messagePayload)
 .then(console.log)
