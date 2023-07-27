@@ -58,9 +58,9 @@ export interface ResponseConfig<B> extends GofetchResponseInit {
 export type ResponseConfigReturn<B = any> = Pick<ResponseConfig<B>, 'body' | 'headers'>;
 
 export interface Middleware<B = any> {
-  onRequest?(config: Gofetch<Request>): PromiseLike<RequestConfig<B> | void> | RequestConfig<B> | void;
-  onResponse?(config: Gofetch<Response>): PromiseLike<ResponseConfigReturn<B> | void> | ResponseConfigReturn<B> | void;
-  onError?(error: GofetchError, controller: RetryController): PromiseLike<ResponseConfigReturn<B> | void> | ResponseConfigReturn<B> | void;
+  onRequest?(config: Gofetch<Request>): Promise<RequestConfig<B> | void> | RequestConfig<B> | void;
+  onResponse?(config: Gofetch<Response>): Promise<ResponseConfigReturn<B> | void> | ResponseConfigReturn<B> | void;
+  onError?(error: GofetchError, controller: RetryController): Promise<ResponseConfigReturn<B> | void> | ResponseConfigReturn<B> | void;
 }
 
 export type GofetchMethod = 'GET' | 'POST' | 'HEAD' | 'OPTIONS' | 'PATCH' | 'DELETE' | 'PUT';
