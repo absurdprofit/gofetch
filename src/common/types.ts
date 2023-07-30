@@ -55,7 +55,7 @@ export interface ResponseConfig<B> extends GofetchResponseInit {
   formData(): Promise<FormData>;
 }
 
-export type ResponseConfigReturn<B = any> = Pick<ResponseConfig<B>, 'body' | 'headers' | 'status' | 'statusText'>;
+export type ResponseConfigReturn<B = any> = Partial<Pick<ResponseConfig<B>, 'body' | 'headers' | 'status' | 'statusText'>>;
 
 export type None = null | undefined | void;
 export interface Middleware<B = any> {
