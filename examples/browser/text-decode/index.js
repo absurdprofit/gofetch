@@ -35,11 +35,13 @@ if (fetchButton) {
     fetchButton.onclick = async () => {
         const response = await gofetch.get('https://streams.spec.whatwg.org/demos/data/commits.include');
         const body = response.body;
+        let tableContent = "";
         if (!table) return;
         
         const writable = new BufferStream({
             onChunk: (chunk) => {
-                table.innerHTML += chunk;
+                tableContent += chunk;
+                table.innerHTML = tableContent;
                 console.log("On Chunk");
             }
         });
