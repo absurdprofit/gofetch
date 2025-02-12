@@ -1,6 +1,6 @@
-import { Gofetch } from "../index";
+import { GoFetch } from "../index";
 import { RetryController } from "../RetryController";
-import { GofetchError } from "./utils";
+import { GoFetchError } from "./utils";
 
 export type RequestOrResponse<T extends Request | Response> = T extends Request ? Request : Response;
 
@@ -11,8 +11,8 @@ interface RangeObject {
 type RangeArray = [number, number?];
 export type Range = RangeObject | RangeArray | number;
 // TODO add developer interface for specifying range requests
-export type GofetchRequestInit = Partial<Pick<RequestInit, 'cache' | 'credentials' | 'headers' | 'integrity' | 'redirect' | 'referrer' | 'referrerPolicy' | 'signal' | 'mode' | 'keepalive' | 'window' | 'method'>>;
-export type GofetchResponseInit = Partial<ResponseInit>;
+export type GoFetchRequestInit = Partial<Pick<RequestInit, 'cache' | 'credentials' | 'headers' | 'integrity' | 'redirect' | 'referrer' | 'referrerPolicy' | 'signal' | 'mode' | 'keepalive' | 'window' | 'method'>>;
+export type GoFetchResponseInit = Partial<ResponseInit>;
 
 type GetExclusiveKeys<
   T,
@@ -42,11 +42,11 @@ export type DeepMerge<T, U> =
     : T | U;
 
 
-export interface RequestConfig<B = any> extends GofetchRequestInit {
+export interface RequestConfig<B = any> extends GoFetchRequestInit {
   body?: BodyInit | ReadableStream<B>;
 }
 
-export interface ResponseConfig<B> extends GofetchResponseInit {
+export interface ResponseConfig<B> extends GoFetchResponseInit {
   body: BodyInit | ReadableStream<B> | null;
   json<D>(): Promise<D>;
   arrayBuffer(): Promise<ArrayBuffer>;
@@ -59,10 +59,10 @@ export type ResponseConfigReturn<B = any> = Partial<Pick<ResponseConfig<B>, 'bod
 
 export type None = null | undefined | void;
 export interface Middleware<B = any> {
-  onRequest?(config: Gofetch<Request>): Promise<RequestConfig<B> | None> | RequestConfig<B> | None;
-  onResponse?(config: Gofetch<Response>): Promise<ResponseConfigReturn<B> | None> | ResponseConfigReturn<B> | None;
-  onError?(error: GofetchError, controller: RetryController): Promise<ResponseConfigReturn<B> | None> | ResponseConfigReturn<B> | None;
+  onRequest?(config: GoFetch<Request>): Promise<RequestConfig<B> | None> | RequestConfig<B> | None;
+  onResponse?(config: GoFetch<Response>): Promise<ResponseConfigReturn<B> | None> | ResponseConfigReturn<B> | None;
+  onError?(error: GoFetchError, controller: RetryController): Promise<ResponseConfigReturn<B> | None> | ResponseConfigReturn<B> | None;
 }
 
-export type GofetchMethod = 'GET' | 'POST' | 'HEAD' | 'OPTIONS' | 'PATCH' | 'DELETE' | 'PUT';
+export type GoFetchMethod = 'GET' | 'POST' | 'HEAD' | 'OPTIONS' | 'PATCH' | 'DELETE' | 'PUT';
 

@@ -1,4 +1,4 @@
-import { Gofetch } from "../index";
+import { GoFetch } from "../index";
 import { DeepMerge } from "./types";
 
 export function isAbsoluteURL(url: RequestInfo | URL) {
@@ -54,13 +54,13 @@ export function iterableToObject<T extends [Key, any]>(iterable: Iterable<T> | A
     return object;
 }
 
-export class GofetchError extends Error {
-    public readonly response: Gofetch<Response | Request>;
-    constructor(response: Gofetch<Response | Request>, message?: string) {
+export class GoFetchError extends Error {
+    public readonly response: GoFetch<Response | Request>;
+    constructor(response: GoFetch<Response | Request>, message?: string) {
         super();
 
         this.response = response;
-        this.name = "GofetchError";
+        this.name = "GoFetchError";
         if (response.raw instanceof Response) {
             if (message) {
                 this.message = message

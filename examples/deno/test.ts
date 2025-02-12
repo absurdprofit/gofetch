@@ -1,9 +1,9 @@
 // @deno-types="../../build/index.d.ts"
-import {Gofetch} from '../../build/index.mjs';
+import {GoFetch} from '../../build/index.mjs';
 // @deno-types="../../build/common/types.d.ts"
 import type {Middleware, RequestConfig} from '../../build/common/types.d.ts';
 
-const gofetch = new Gofetch(new URL('http://localhost:8080/'));
+const gofetch = new GoFetch(new URL('http://localhost:8080/'));
 
 class AuthMiddleware implements Middleware {
     private authToken: string | null = null;
